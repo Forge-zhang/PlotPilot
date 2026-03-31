@@ -34,7 +34,9 @@ app.include_router(bible.router, prefix="/api/v1")
 app.include_router(ai.router, prefix="/api/v1")
 
 # 注册统计路由（临时保留旧实现）
-stats_repository = StatsRepository()
+from pathlib import Path
+books_root = Path("./data")  # 使用与新架构相同的数据目录
+stats_repository = StatsRepository(books_root)
 stats_service = StatsService(stats_repository)
 stats_router = create_stats_router(stats_service)
 app.include_router(stats_router, prefix="/api/stats", tags=["statistics"])
