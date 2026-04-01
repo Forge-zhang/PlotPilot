@@ -24,7 +24,7 @@
           <div v-if="currentChapter" class="chapter-editor">
             <div class="editor-header">
               <div class="editor-title">
-                <h3>第{{ currentChapter.number }}章 {{ currentChapter.title || '未命名' }}</h3>
+                <h3>{{ currentChapter.title || `第${currentChapter.number}章` }}</h3>
                 <n-tag size="small" :type="currentChapter.word_count > 0 ? 'success' : 'default'" round>
                   {{ currentChapter.word_count > 0 ? '已收稿' : '未收稿' }}
                 </n-tag>

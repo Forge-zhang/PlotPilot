@@ -53,10 +53,6 @@ export function useWorkbench(options: UseWorkbenchOptions) {
   const currentJobId = ref<string | null>(null)
 
 
-  const currentChapterId = computed(() => {
-    return currentChapterId.value
-  })
-
   const hasStructure = computed(() => {
     return bookMeta.value.has_bible || bookMeta.value.has_outline
   })
