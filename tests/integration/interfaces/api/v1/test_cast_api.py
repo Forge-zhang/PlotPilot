@@ -139,11 +139,14 @@ class TestGetCastGraph:
         assert data["characters"][0]["aliases"] == ["小张"]
         assert len(data["characters"][0]["story_events"]) == 1
 
-    def test_get_cast_graph_not_found(self, test_novel):
-        """Test getting non-existent cast graph"""
+    def test_get_cast_graph_empty_when_not_created(self, test_novel):
+        """尚无 cast 文件时返回 200 与空图"""
         response = client.get("/api/v1/novels/test-novel-cast/cast")
-        assert response.status_code == 404
-        assert "not found" in response.json()["detail"].lower()
+        assert response.status_code == 200
+        data = response.json()
+        assert data["version"] == 2
+        assert data["characters"] == []
+        assert data["relationships"] == []
 
 
 class TestUpdateCastGraph:

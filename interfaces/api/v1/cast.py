@@ -70,10 +70,8 @@ async def get_cast_graph(
     """
     cast_graph = service.get_cast_graph(novel_id)
     if cast_graph is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Cast graph not found for novel: {novel_id}"
-        )
+        # 尚无 cast 文件时返回空图，避免前端把「未创建」当成路由错误
+        return CastGraphDTO(version=2, characters=[], relationships=[])
     return cast_graph
 
 
