@@ -28,7 +28,10 @@ class AnthropicProvider(BaseProvider):
         if not settings.api_key:
             raise ValueError("API key is required for AnthropicProvider")
 
-        self.client = Anthropic(api_key=settings.api_key)
+        client_kw = {"api_key": settings.api_key}
+        if settings.base_url:
+            client_kw["base_url"] = settings.base_url
+        self.client = Anthropic(**client_kw)
 
     async def generate(
         self,
