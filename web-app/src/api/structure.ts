@@ -114,5 +114,13 @@ export const structureApi = {
       `/novels/${novelId}/structure/create-default`,
       null,
       { params: { total_chapters: totalChapters } }
+    ),
+
+  /**
+   * 初始化叙事结构（AI 生成第一幕）
+   */
+  initializeStructure: (novelId: string) =>
+    apiClient.post<{ success: boolean; message: string; nodes_created: number; act_id?: string; act_title?: string }>(
+      `/novels/${novelId}/structure/initialize`
     )
 }

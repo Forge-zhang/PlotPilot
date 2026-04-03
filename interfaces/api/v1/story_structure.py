@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from application.services.story_structure_service import StoryStructureService
+from application.services.story_structure_ai_service import StoryStructureAIService
 from infrastructure.persistence.database.story_node_repository import StoryNodeRepository
 from application.paths import DATA_DIR
 
@@ -19,6 +20,13 @@ def get_service() -> StoryStructureService:
     db_path = str(DATA_DIR / "aitext.db")
     repository = StoryNodeRepository(db_path)
     return StoryStructureService(repository)
+
+
+def get_ai_service() -> StoryStructureAIService:
+    """获取 AI 服务实例"""
+    db_path = str(DATA_DIR / "aitext.db")
+    repository = StoryNodeRepository(db_path)
+    return StoryStructureAIService(repository)
 
 
 class CreateNodeRequest(BaseModel):
@@ -170,5 +178,45 @@ async def create_default_structure(
     try:
         result = service.create_default_structure(novel_id, total_chapters)
         return {"success": True, "structure": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/novels/{novel_id}/structure/initialize")
+async def initialize_structure(
+    novel_id: str,
+    ai_service: StoryStructureAIService = Depends(get_ai_service)
+):
+    """初始化叙事结构（AI 生成第一幕）
+
+    首次进入工作台时调用，AI 自动生成第一幕的结构和大纲
+    """
+    try:
+        result = await ai_service.initialize_first_act(novel_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/novels/{novel_id}/structure/check-completion")
+async def check_act_completion(
+    novel_id: str,
+    chapter_number: int,
+    ai_service: StoryStructureAIService = Depends(get_ai_service)
+):
+    """检查幕是否完成
+
+    章节生成完成后调用，判断当前幕是否应该结束
+    """
+    try:
+        result = await ai_service.check_act_completion(novel_id, chapter_number)
+
+        # 如果需要创建下一幕，自动创建
+        if result.get("should_create_next"):
+            current_act_id = result.get("current_act_id")
+            next_act = await ai_service.create_next_act(novel_id, current_act_id)
+            result["next_act"] = next_act
+
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

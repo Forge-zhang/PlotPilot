@@ -69,9 +69,37 @@ const loadTree = async () => {
   loading.value = true
   try {
     const res = await structureApi.getTree(props.slug)
+
+    // 如果没有结构，自动初始化第一幕
+    if (!res.tree || res.tree.length === 0) {
+      await initializeStructure()
+      return
+    }
+
     treeData.value = res.tree.map(convertToTreeNode)
   } catch (e: any) {
     message.error(e?.response?.data?.detail || '加载结构失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 初始化叙事结构（AI 生成第一幕）
+const initializeStructure = async () => {
+  try {
+    message.info('正在生成第一幕...')
+    const res = await structureApi.initializeStructure(props.slug)
+
+    if (res.success) {
+      message.success(res.message || '第一幕已创建')
+      // 重新加载树
+      const treeRes = await structureApi.getTree(props.slug)
+      treeData.value = treeRes.tree.map(convertToTreeNode)
+    } else {
+      message.warning(res.message || '结构已存在')
+    }
+  } catch (e: any) {
+    message.error(e?.response?.data?.detail || '初始化失败')
   } finally {
     loading.value = false
   }

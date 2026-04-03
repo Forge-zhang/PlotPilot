@@ -28,10 +28,20 @@ from interfaces.api.dependencies import (
     get_auto_bible_generator,
     get_auto_knowledge_generator,
 )
+from application.services.story_structure_ai_service import StoryStructureAIService
+from infrastructure.persistence.database.story_node_repository import StoryNodeRepository
+from application.paths import DATA_DIR
 from application.services.auto_bible_generator import AutoBibleGenerator
 from application.services.auto_knowledge_generator import AutoKnowledgeGenerator
 
 router = APIRouter(prefix="/novels", tags=["generation"])
+
+
+def get_structure_ai_service() -> StoryStructureAIService:
+    """获取叙事结构 AI 服务"""
+    db_path = str(DATA_DIR / "aitext.db")
+    repository = StoryNodeRepository(db_path)
+    return StoryStructureAIService(repository)
 
 
 # Request/Response Models
@@ -172,6 +182,18 @@ async def generate_chapter(
         logger.info(f"  内容长度: {len(result.content)} 字符")
         logger.info(f"  Token 数: {result.token_count}")
         logger.info(f"  问题数: {len(issues)}, 警告数: {len(warnings)}")
+
+        # 检查幕是否完成，自动创建下一幕
+        try:
+            structure_service = get_structure_ai_service()
+            completion_check = await structure_service.check_act_completion(
+                novel_id=novel_id,
+                chapter_number=request.chapter_number
+            )
+            if completion_check.get("should_create_next"):
+                logger.info(f"当前幕已完成，自动创建下一幕")
+        except Exception as e:
+            logger.warning(f"幕完成检查失败（不影响章节生成）: {e}")
 
         return GenerateChapterResponse(
             content=result.content,
