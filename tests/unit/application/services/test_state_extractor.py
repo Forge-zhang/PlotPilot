@@ -144,6 +144,22 @@ class TestStateExtractor:
         assert isinstance(call_args[1]['config'], GenerationConfig)
 
     @pytest.mark.asyncio
+    async def test_extract_chapter_state_invalid_contract_returns_empty(self):
+        """顶层多字段时契约拒绝，回退空状态（与宽松 json.loads 行为不同）。"""
+        self.llm_service.generate = AsyncMock(
+            return_value=GenerationResult(
+                content=(
+                    '{"new_characters": [], "character_actions": [], "relationship_changes": [], '
+                    '"foreshadowing_planted": [], "foreshadowing_resolved": [], "events": [], "junk": 1}'
+                ),
+                token_usage=TokenUsage(input_tokens=10, output_tokens=10),
+            )
+        )
+        state = await self.extractor.extract_chapter_state(content="正文")
+        assert len(state.new_characters) == 0
+        assert len(state.events) == 0
+
+    @pytest.mark.asyncio
     async def test_extract_chapter_state_with_complex_content(self):
         """测试提取复杂内容"""
         content = """
