@@ -18,9 +18,6 @@ from interfaces.api.dependencies import (
     get_chapter_aftermath_pipeline,
 )
 from domain.shared.exceptions import EntityNotFoundError
-from domain.novel.value_objects.chapter_id import ChapterId
-from domain.novel.value_objects.novel_id import NovelId
-
 logger = logging.getLogger(__name__)
 
 
@@ -28,17 +25,10 @@ async def _run_chapter_aftermath(
     novel_id: str,
     chapter_number: int,
     content: str,
-    chapter_uuid: str,
     pipeline: ChapterAftermathPipeline,
 ) -> None:
-    """与托管/守护进程同源的章后管线（叙事/向量、文风、KG、后台抽取）。"""
-    await pipeline.run_after_chapter_saved(
-        novel_id,
-        chapter_number,
-        content,
-        novel_id_vo=NovelId(novel_id),
-        chapter_id_vo=ChapterId(chapter_uuid),
-    )
+    """与托管/守护进程同源的章后管线（叙事/向量、文风、KG；三元组与伏笔单次 LLM）。"""
+    await pipeline.run_after_chapter_saved(novel_id, chapter_number, content)
 
 
 router = APIRouter(tags=["chapters"])
@@ -199,7 +189,6 @@ async def update_chapter(
         novel_id,
         chapter_number,
         content,
-        chapter.id,
         pipeline,
     )
     return chapter

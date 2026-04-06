@@ -95,6 +95,8 @@ def build_daemon() -> AutopilotDaemon:
         llm_service=llm_service,
         foreshadowing_repo=foreshadow_repo,
         triple_repository=triple_repo,
+        knowledge_service=get_knowledge_service(),
+        chapter_indexing_service=get_chapter_indexing_service(),
     )
 
     aftermath_pipeline = None
@@ -104,9 +106,10 @@ def build_daemon() -> AutopilotDaemon:
             chapter_indexing_service=get_chapter_indexing_service(),
             llm_service=llm_service,
             voice_drift_service=voice_drift_service,
-            background_task_service=bg_service,
+            triple_repository=triple_repo,
+            foreshadowing_repository=foreshadow_repo,
         )
-        logger.info("ChapterAftermathPipeline 已注入（叙事/向量/文风/KG/后台抽取，与本进程 BG 队列一致）")
+        logger.info("ChapterAftermathPipeline 已注入（叙事/向量/文风/KG；三元组与伏笔单次 LLM）")
     except Exception as e:
         logger.warning("ChapterAftermathPipeline 初始化失败，审计将降级：%s", e)
 
