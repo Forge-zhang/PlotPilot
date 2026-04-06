@@ -37,6 +37,19 @@ export interface MatchForeshadowResponse {
   entry: ForeshadowEntry | null
 }
 
+export interface ChapterForeshadowSuggestionItem {
+  entry: ForeshadowEntry
+  score: number
+  reason: string
+}
+
+export interface ChapterForeshadowSuggestionsResponse {
+  chapter_number: number
+  outline_excerpt: string
+  items: ChapterForeshadowSuggestionItem[]
+  note: string
+}
+
 export const foreshadowApi = {
   /** GET /api/v1/novels/{novel_id}/foreshadow-ledger */
   list: (novelId: string, status?: 'pending' | 'consumed') =>
@@ -87,4 +100,26 @@ export const foreshadowApi = {
       status: 'consumed',
       consumed_at_chapter: consumedAtChapter,
     }),
+
+  /**
+   * GET …/foreshadow-ledger/chapter-suggestions
+   * 按本章大纲与 pending 伏笔做词重叠打分（后端可升级为向量检索）。
+   */
+  chapterSuggestions: (
+    novelId: string,
+    chapterNumber: number,
+    outline: string,
+    params?: { min_score?: number; limit?: number }
+  ) =>
+    apiClient.get<ChapterForeshadowSuggestionsResponse>(
+      `/novels/${novelId}/foreshadow-ledger/chapter-suggestions`,
+      {
+        params: {
+          chapter_number: chapterNumber,
+          outline,
+          min_score: params?.min_score,
+          limit: params?.limit,
+        },
+      }
+    ) as Promise<ChapterForeshadowSuggestionsResponse>,
 }

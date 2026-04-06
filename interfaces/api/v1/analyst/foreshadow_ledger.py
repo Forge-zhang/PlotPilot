@@ -1,6 +1,7 @@
 """Foreshadow Ledger API 路由"""
-from fastapi import APIRouter, Depends, HTTPException, Path
-from typing import List, Dict, Optional
+import re
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from typing import List, Dict, Optional, Tuple
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -57,6 +58,34 @@ class MatchSubtextResponse(BaseModel):
     """匹配潜台词响应"""
     matched: bool
     entry: Optional[SubtextEntryResponse]
+
+
+def _tokenize_for_overlap(text: str) -> set:
+    if not text or not text.strip():
+        return set()
+    return set(re.findall(r"[\w\u4e00-\u9fff]+", text.lower()))
+
+
+def _outline_clue_overlap_score(outline: str, clue: str) -> float:
+    """词重叠启发式：与向量相似度的占位实现，后续可换 embedding。"""
+    o, c = _tokenize_for_overlap(outline), _tokenize_for_overlap(clue)
+    if not c:
+        return 0.0
+    inter = len(o & c)
+    return inter / len(c)
+
+
+class ChapterForeshadowSuggestionItem(BaseModel):
+    entry: SubtextEntryResponse
+    score: float
+    reason: str
+
+
+class ChapterForeshadowSuggestionsResponse(BaseModel):
+    chapter_number: int
+    outline_excerpt: str
+    items: List[ChapterForeshadowSuggestionItem]
+    note: str = "当前为词重叠启发式排序；接入向量库后将升级为语义相似度（>0.8 推送）。"
 
 
 def _entry_to_response(entry: SubtextLedgerEntry) -> SubtextEntryResponse:
@@ -128,6 +157,61 @@ def list_subtext_entries(
 
         return [_entry_to_response(e) for e in entries]
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/novels/{novel_id}/foreshadow-ledger/chapter-suggestions",
+    response_model=ChapterForeshadowSuggestionsResponse,
+)
+def chapter_foreshadow_suggestions(
+    novel_id: str = Path(..., description="小说 ID"),
+    chapter_number: int = Query(..., ge=1, description="当前章号"),
+    outline: str = Query("", description="本章大纲或要点，用于与 pending 伏笔文本比对"),
+    min_score: float = Query(0.08, ge=0.0, le=1.0, description="最低重叠分"),
+    limit: int = Query(12, ge=1, le=50, description="返回条数上限"),
+    repo: ForeshadowingRepository = Depends(get_foreshadowing_repository),
+):
+    """本章建议回收：对 pending 伏笔按大纲词重叠打分（非持久化）。"""
+    try:
+        registry = repo.get_by_novel_id(NovelId(novel_id))
+        if not registry:
+            raise HTTPException(status_code=404, detail=f"Novel {novel_id} not found")
+
+        pending = [e for e in registry.subtext_entries if e.status == "pending"]
+        scored: List[Tuple[SubtextLedgerEntry, float]] = []
+        for e in pending:
+            text = " ".join(
+                [e.hidden_clue, e.character_id, " ".join(e.sensory_anchors.values())]
+            )
+            sc = _outline_clue_overlap_score(outline, text)
+            if sc >= min_score:
+                scored.append((e, sc))
+
+        scored.sort(key=lambda x: x[1], reverse=True)
+        top = scored[:limit]
+
+        excerpt = outline.strip()
+        if len(excerpt) > 200:
+            excerpt = excerpt[:200] + "…"
+
+        items = [
+            ChapterForeshadowSuggestionItem(
+                entry=_entry_to_response(e),
+                score=round(sc, 4),
+                reason="大纲与伏笔/锚点词重叠",
+            )
+            for e, sc in top
+        ]
+
+        return ChapterForeshadowSuggestionsResponse(
+            chapter_number=chapter_number,
+            outline_excerpt=excerpt,
+            items=items,
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
