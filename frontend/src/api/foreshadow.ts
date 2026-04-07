@@ -12,6 +12,10 @@ export interface ForeshadowEntry {
   sensory_anchors: Record<string, string>
   status: 'pending' | 'consumed'
   consumed_at_chapter: number | null
+  // 新增字段：预期回收机制
+  suggested_resolve_chapter: number | null  // 预期回收章节
+  resolve_chapter_window: number | null    // 宽容窗口
+  importance: 'low' | 'medium' | 'high' | 'critical'  // 重要性
   created_at: string
 }
 
@@ -21,6 +25,10 @@ export interface CreateForeshadowPayload {
   character_id: string
   hidden_clue: string
   sensory_anchors: Record<string, string>
+  // 新增可选字段
+  suggested_resolve_chapter?: number  // 预期回收章节
+  resolve_chapter_window?: number    // 宽容窗口
+  importance?: 'low' | 'medium' | 'high' | 'critical'
 }
 
 export interface UpdateForeshadowPayload {
@@ -30,6 +38,10 @@ export interface UpdateForeshadowPayload {
   sensory_anchors?: Record<string, string>
   status?: 'pending' | 'consumed'
   consumed_at_chapter?: number
+  // 新增字段
+  suggested_resolve_chapter?: number  // 预期回收章节
+  resolve_chapter_window?: number    // 宽容窗口
+  importance?: 'low' | 'medium' | 'high' | 'critical'
 }
 
 export interface MatchForeshadowResponse {
